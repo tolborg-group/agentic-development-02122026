@@ -1,0 +1,388 @@
+# Tool notes
+Reference slides for reading after the talk
+
+## pixi / uv
+
+:::: {.columns}
+::: {.column width="42%" .compact}
+[Must have]{.accent-strong}
+
+Project environment managers: dependencies declared in one file, exact versions pinned in a **lockfile** committed to git.
+
+**For the agent:** one command gives a working environment, and the same command runs the tests.
+No guessing which Python or which `pip install`.
+
+**For you:** the agent, you and CI run identical versions. No "works on my machine".
+
+**Which one:** pixi when you need conda-forge (compilers, CUDA, non-Python libraries);
+uv for pure-Python projects.
+
+[pixi.sh](https://pixi.sh) · [docs.astral.sh/uv](https://docs.astral.sh/uv)
+:::
+
+::: {.column width="58%"}
+```bash
+# pixi: conda-forge + PyPI, writes pixi.toml + pixi.lock
+pixi init
+pixi add python=3.13 numpy pytest
+pixi add --pypi jaxtyping
+pixi task add test "pytest -q"
+pixi run test
+```
+
+```bash
+# uv: PyPI only, writes pyproject.toml + uv.lock
+uv init --lib
+uv add numpy
+uv add --dev pytest
+uv run pytest -q
+```
+
+```bash
+# CI: install exactly what the lockfile says
+pixi install --locked          # or: uv sync --locked
+```
+:::
+::::
+
+::: notes
+Telling the agent "run tests with pixi run test" (or uv run pytest) in CLAUDE.md removes a whole
+class of environment confusion: the command builds or reuses the right environment first.
+pixi tasks double as documentation of how the project is meant to be run.
+This deck itself uses pixi for its preview and render tasks.
+:::
+
+## pytest
+
+:::: {.columns}
+::: {.column width="42%" .compact}
+[Must have]{.accent-strong}
+
+The standard Python test runner: plain `assert`, fixtures, parametrized tests.
+
+**For the agent:** a pass/fail signal after every change. The spec, made executable.
+
+**For you:** tests are the reviewable form of the spec. Read them *before* the code exists.
+
+**Wire it in:** tell the agent to run `pytest` before it reports a task done (`CLAUDE.md`), and run it in CI.
+
+[docs.pytest.org](https://docs.pytest.org)
+:::
+
+::: {.column width="58%"}
+```python
+def kinetic_energy(mass, velocity):
+    return 0.5 * mass * velocity**2
+```
+
+```python
+import pytest
+
+
+def test_kinetic_energy():
+    assert kinetic_energy(2.0, 3.0) == pytest.approx(9.0)
+
+
+@pytest.mark.parametrize("velocity", [-3.0, 3.0])
+def test_direction_does_not_matter(velocity):
+    assert kinetic_energy(2.0, velocity) == pytest.approx(9.0)
+```
+
+```text
+$ pytest -q
+..                                                       [100%]
+2 passed
+```
+:::
+::::
+
+::: notes
+All code on these tool slides was run with current versions of each tool;
+the outputs shown are real.
+:::
+
+## ruff
+
+:::: {.columns}
+::: {.column width="42%" .compact}
+[Too cheap to skip]{.accent-strong}
+
+A very fast linter and formatter. It replaces flake8, isort, black and friends.
+
+**For the agent:** immediate feedback on common mistakes; `--fix` repairs many of them.
+
+**For you:** consistent formatting means a diff shows only real changes, so review
+is about the logic, not the style.
+
+[docs.astral.sh/ruff](https://docs.astral.sh/ruff)
+:::
+
+::: {.column width="58%"}
+```python
+import os
+
+
+def collect(value, results=[]):
+    results.append(value)
+    return results
+```
+
+```text
+$ ruff check
+messy.py:1:8: F401 [*] `os` imported but unused
+messy.py:4:28: B006 Do not use mutable data structures
+                    for argument defaults
+```
+
+```toml
+# pyproject.toml
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+```
+:::
+::::
+
+::: notes
+B006 is a real bug, not style: the default list is created once and shared between
+calls, so results from one call leak into the next.
+The rule selection is a matter of taste; B (bugbear) is the one most likely to catch real bugs.
+:::
+
+## mypy
+
+:::: {.columns}
+::: {.column width="42%" .compact}
+[Too cheap to skip]{.accent-strong}
+
+A static type checker for annotated Python.
+
+**For the agent:** catches interface mismatches before anything runs: wrong argument
+types, a forgotten `None`.
+
+**For you:** type signatures document the interfaces, and a typed function is quicker to review.
+
+**Limits:** it doesn't see array shapes (see jaxtyping).
+
+[mypy.readthedocs.io](https://mypy.readthedocs.io)
+:::
+
+::: {.column width="58%"}
+```python
+def find_index(items: list[str], target: str) -> int | None:
+    for i, item in enumerate(items):
+        if item == target:
+            return i
+    return None
+
+
+def next_index(items: list[str], target: str) -> int:
+    return find_index(items, target) + 1
+```
+
+```text
+$ mypy lookup.py
+lookup.py:9: error: Unsupported operand types for +
+                    ("None" and "int")
+```
+:::
+::::
+
+::: notes
+Without mypy, this only fails at run time, and only when the target is missing.
+Config used: [tool.mypy] strict = true.
+:::
+
+## Quarto
+
+:::: {.columns}
+::: {.column width="42%" .compact}
+[High value for scientific code]{.accent-strong}
+
+A publishing system that runs code inside documents: websites, reports, slides (this deck).
+
+**For the agent:** a place to write the spec down and to run the code on a real problem.
+A broken validation shows up as a failed render.
+
+**For you:** prose, code and results in one place you can *read*. Versioned with the code,
+shared between sessions.
+
+**Wire it in:** render in CI, so the validation documents run on every push.
+
+[quarto.org](https://quarto.org)
+:::
+
+::: {.column width="58%"}
+````markdown
+---
+title: "Validation: numerical derivative"
+---
+
+The finite-difference derivative of sin(x)
+should match cos(x).
+
+```{{python}}
+x = np.linspace(0, 2 * np.pi, 200)
+dydx = np.gradient(np.sin(x), x)
+print(f"max error: {np.max(np.abs(dydx - np.cos(x))):.1e}")
+
+plt.plot(x, np.cos(x), label="analytic")
+plt.plot(x, dydx, "--", label="numerical")
+plt.legend()
+```
+````
+
+[Renders to a page with the text, the plot, and `max error: 1.7e-04`.]{.muted .compact}
+:::
+::::
+
+::: notes
+For expensive validation documents, Quarto's freeze option avoids re-running them on
+every render, at the cost of them no longer running in CI.
+:::
+
+## hypothesis
+
+:::: {.columns}
+::: {.column width="42%" .compact}
+[High value for scientific code]{.accent-strong}
+
+Property-based testing: you state a property, hypothesis generates many inputs, and shrinks any failure to a minimal example.
+
+**For the agent:** it can't pass by getting a few hand-picked cases right.
+
+**For you:** invariants written once: round-trips, conservation, symmetry, bounds.
+
+[hypothesis.readthedocs.io](https://hypothesis.readthedocs.io)
+:::
+
+::: {.column width="58%"}
+```python
+HARTREE_IN_EV = 27.211386245988
+
+def ev_to_hartree(e):
+    return e / HARTREE_IN_EV
+
+def hartree_to_ev(e):
+    return e * HARTREE_IN_EV
+```
+
+```python
+from hypothesis import given
+from hypothesis import strategies as st
+
+
+@given(st.floats(min_value=-1e6, max_value=1e6))
+def test_roundtrip(energy):
+    roundtrip = hartree_to_ev(ev_to_hartree(energy))
+    assert roundtrip == pytest.approx(energy)
+```
+
+[One test, run on 100 generated energies by default.]{.muted .compact}
+:::
+::::
+
+::: notes
+With JAX, every new array shape triggers a recompile under jit, so keep shapes fixed and
+let hypothesis vary the values.
+:::
+
+## jaxtyping
+
+:::: {.columns}
+::: {.column width="42%" .compact}
+[When you need more confidence]{.accent-strong}
+
+Shape and dtype annotations for JAX, NumPy and PyTorch arrays, checked at runtime (here with beartype).
+
+**For the agent:** a shape mismatch fails loudly at the function boundary,
+instead of silently broadcasting.
+
+**For you:** signatures say what each axis means.
+
+**Check in tests only:** annotate without a decorator, and let the pytest hook switch
+checking on. Normal imports stay unchecked, so production code pays nothing.
+
+[docs.kidger.site/jaxtyping](https://docs.kidger.site/jaxtyping)
+:::
+
+::: {.column width="58%"}
+```python
+def weighted_sum(
+    w: Float[Array, " n"], x: Float[Array, " n"]
+) -> Float[Array, ""]:
+    return jnp.sum(w * x)
+
+w = jnp.array([1.0, 2.0, 3.0])
+x = jnp.ones((3, 1))    # oops: column, not vector
+weighted_sum(w, x)      # 18.0, should be 6.0: unchecked
+```
+
+```text
+$ pytest --jaxtyping-packages=mypkg,beartype.beartype
+E  jaxtyping.TypeCheckError: Type-check error whilst
+   checking the parameters of mypkg.weighted_sum.
+```
+
+```toml
+# pyproject.toml: make it the default for every test run
+[tool.pytest.ini_options]
+addopts = "--jaxtyping-packages=mypkg,beartype.beartype"
+```
+:::
+::::
+
+::: notes
+Without the hook, the annotations are inert: the (3,) * (3, 1) product broadcasts to a
+(3, 3) array and sums all nine entries. No error, wrong answer.
+Outside pytest, the same hook is available as jaxtyping.install_import_hook, or per
+function with the @jaxtyped(typechecker=beartype) decorator.
+Under jax.jit the checks run at trace time, so even when enabled they cost little.
+Tested with jaxtyping 0.3.11 on Python 3.13; the import hook failed on Python 3.15 at the time of writing.
+:::
+
+## mutmut
+
+:::: {.columns}
+::: {.column width="42%" .compact}
+[When you need more confidence]{.accent-strong}
+
+Mutation testing: makes small changes to your code (flip `<=` to `<`, change a constant) and checks whether any test notices.
+
+**For you:** can the tests actually fail? A surviving mutant is a change no test catches.
+
+Not every survivor is a bug, so read them.
+
+**Cost:** runs the test suite once per mutant, so run it now and then, not on every commit.
+
+[github.com/boxed/mutmut](https://github.com/boxed/mutmut)
+:::
+
+::: {.column width="58%"}
+```python
+def is_converged(error, tol):
+    return error <= tol
+
+def test_is_converged():
+    assert is_converged(1e-8, tol=1e-6)
+    assert not is_converged(1e-3, tol=1e-6)
+```
+
+```text
+$ mutmut run && mutmut results
+is_converged__mutmut_1: survived
+-    return error <= tol
++    return error < tol
+```
+
+```python
+def test_is_converged_at_tolerance():   # kills the mutant
+    assert is_converged(1e-6, tol=1e-6)
+```
+:::
+::::
+
+::: notes
+Configure which code to mutate in pyproject.toml: [tool.mutmut] source_paths = ["src/yourpkg/"].
+(Older versions call it paths_to_mutate.)
+Survivors that change nothing observable are "equivalent mutants" and can be ignored.
+:::

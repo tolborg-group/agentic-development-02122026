@@ -1,0 +1,192 @@
+# Working with an agent
+Practical advice for this afternoon
+
+## Three ways in
+
+::: {.compact .wide}
+| | Web chat ([claude.ai]{.muted}) | Desktop app: *Chat* or *Cowork* mode | Claude Code ([terminal, IDE, or Desktop app *Code* mode]{.muted}) |
+|---|---|---|---|
+| **Sees your files** | What you upload | Folders you connect (Cowork) | Your project directory |
+| **Runs code** | In a sandbox, not your environment | In a sandboxed VM (Cowork) | In *your* environment, with your pixi env |
+| **Results** | Download them | Written to the folder | Edits in the repo, git commits |
+| **Your tools** ([git, pytest, CLAUDE.md, CI]{.muted}) | No | Partly | Yes |
+:::
+
+::: {.panel .compact .wide}
+The Desktop app has three modes: *Chat* · *Cowork* · **Code**.
+Only **Code** is Claude Code. Chat and Cowork belong in the middle column.
+:::
+
+::: notes
+Everything in the cases (oracle tests, validation documents, the git log) needs the right-hand column.
+Cowork is the Desktop app's agentic mode for knowledge work. Its shell runs in a
+VM with restricted network: git push and package publishing are blocked, and it doesn't
+read the Claude Code settings in ~/.claude. It's fine for documents; for code, use Code mode.
+The web chat can run Python in a sandbox, but on uploaded copies of your files, not in your environment.
+:::
+
+## Why not the web chat?
+
+:::: {.columns}
+::: {.column width="50%"}
+::: {.panel .compact}
+**Agent in your environment**
+
+1. Edits the code
+2. Runs `pytest`, reads the failure
+3. Fixes, runs again
+4. Commits when green
+
+[The agent closes the loop. You review the result.]{.accent-strong}
+:::
+:::
+
+::: {.column width="50%"}
+::: {.panel .compact}
+**Web chat**
+
+1. Writes the code
+2. *You* copy it out and run it
+3. *You* paste the error back
+4. Repeat
+
+[You are the loop. In practice: one shot or nothing.]{.accent-strong}
+:::
+:::
+::::
+
+::: {.wide}
+[None of the scaffolding (pixi, pytest, ruff, Quarto, CI) helps if the agent can't run it.
+Fine for questions and small snippets; not for building software.]{.muted}
+:::
+
+::: notes
+There is no git history, no CLAUDE.md, no tests the agent can run, and every round trip
+goes through you. The jaxdft git log (73 commits in 9 days) is only possible because the
+agent ran the tests itself after every change.
+The same applies to the Desktop app's Chat mode.
+:::
+
+## Terminal or Desktop app?
+
+::: {.panel .compact .wide}
+In the Desktop app, switch to **Code** mode. The default *Chat* mode is the web chat in a window.
+:::
+
+:::: {.columns}
+::: {.column width="50%"}
+::: {.panel .compact}
+**Desktop app, Code mode**
+
+- Visual diff review, with comments on lines
+- Parallel sessions in a sidebar, each in its own git worktree if you want
+- Preview pane for web pages
+- No terminal needed
+:::
+:::
+
+::: {.column width="50%"}
+::: {.panel .compact}
+**Terminal (`claude`)**
+
+- Runs wherever you have a shell
+- Scriptable: `claude -p "..."`
+- Runs in CI (GitHub Actions)
+- Same in VS Code / JetBrains
+:::
+:::
+::::
+
+::: {.wide}
+[Both are **Claude Code** working on the same project. Pick whichever you prefer.]{.muted}
+:::
+
+::: notes
+Desktop can also start cloud sessions that keep running after you close the app.
+Sources: code.claude.com/docs/en/desktop, code.claude.com/docs/en/headless (checked 2026-11-24).
+:::
+
+## What goes in `CLAUDE.md`
+
+:::: {.columns}
+::: {.column width="42%" .compact}
+[Read at the start of every session]{.accent-strong}
+
+Put in what should shape the agent's decisions in *every* session.
+
+**Done means:** the exact commands that must pass.
+
+**Conventions** no linter checks: units, array shapes, commits.
+
+**Context:** a few lines, and pointers to the spec. Not the roadmap.
+
+**Integrity:** never tune a constant to pass a test (Nguyen's α).
+
+**When to stop and ask.**
+
+**Leave out:** what the code already shows, and anything that changes weekly.
+
+[Grow it from failures. It is advice, not enforcement: run the checks in hooks and CI too.]{.muted}
+:::
+
+::: {.column width="58%"}
+```markdown
+# CLAUDE.md
+
+## Project
+relaxkit: geometry optimisation for molecules, in JAX.
+Spec and validation documents live in docs/ (Quarto).
+Correctness first, then speed.
+
+## Done means
+- `pixi run test`, `pixi run lint` and `pixi run typecheck` pass
+- New behaviour has a test; new physics has a validation document
+
+## Conventions
+- Atomic units internally; convert only at input and output
+- Positions have shape (n_atoms, 3)
+- One commit per logical change; the message says why
+
+## Never
+- Tune a constant or tolerance to make a test pass.
+  Stop and report the discrepancy.
+- Skip or weaken a failing test
+
+## Stop and ask
+- After three failed attempts at the same fix
+- If the spec looks wrong, or before changing a public API
+```
+:::
+::::
+
+::: notes
+The test for each line: does it change what the agent does in a typical session?
+"Correctness first, then speed" does; a roadmap doesn't, and goes stale. Link to it instead.
+Formatting rules ruff enforces don't need to be here.
+The best lines are added after the agent gets something wrong twice; rules written in
+advance tend to be generic. Keep it short: the longer it gets, the less weight each line carries.
+The "Never" and "Stop and ask" sections are Nguyen's fudge factor and 33 stuck sessions, written as rules.
+:::
+
+## Getting started
+
+::: {.panel .compact .wide}
+**Template repository:** [github.com/tolborg-group/agentic-package-template](https://github.com/tolborg-group/agentic-package-template)
+
+A starting `CLAUDE.md`, and pytest, ruff and mypy already configured with pixi.
+:::
+
+::: {.compact .wide}
+1. Start from the template, and use **Claude Code** (terminal, IDE, or Desktop app **Code** mode)
+2. Fill in `CLAUDE.md`: the project, what done means, your conventions
+3. Pick a small first milestone, and decide where you check the agent's work
+4. Add to `CLAUDE.md` when the agent gets something wrong
+
+[My loop is one way to do step 3, not the way. Try your own.]{.muted}
+:::
+
+::: notes
+TODO: the template URL goes live once the repository is pushed.
+"My workflow" is inspiration, not a recipe: spec and tests first worked for me, but people
+should find where human checks pay off in their own project.
+:::

@@ -3,3 +3,22 @@
 /* Lift the theme's 52ch line cap for dense, full-width slides. */
 .reveal .wide p,
 .reveal .wide li { max-width: none; }
+
+/* Four-step workflow row of panels. */
+.reveal .flow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6em;
+  margin-top: 0.4em;
+}
+.reveal .flow > .panel { margin: 0; }
+.reveal .flow p { max-width: none; }
+
+/* Embedded live page (jaxdft site) on a slide. */
+.reveal iframe.site-frame {
+  width: 100%;
+  height: 600px;
+  border: 1px solid rgba(127, 127, 127, 0.3);
+  border-radius: 6px;
+  background: #fff;
+}

@@ -1,0 +1,152 @@
+# Case 3: `jaxdft`
+
+I tried to build something substantial with `claude code`, my idea was a `jax`-based DFT code
+with the explicit purpose of being able to run on GPU.
+
+## The project
+
+:::: {.columns}
+::: {.column width="60%"}
+A GPU-first plane-wave DFT code in JAX, with two goals, in this order:
+
+1. Explore building a substantial scientific code through agentic development.
+2. Produce real, verifiable physics along the way.
+
+Built so far: band structures, self-consistent LDA, k-point sampling, forces from `jax.grad`,
+runs on CPU clusters and V100 GPUs.
+
+[Everything is public: [mads-peter.com/jaxdft](https://mads-peter.com/jaxdft/)]{.muted .compact}
+:::
+
+::: {.column width="40%"}
+::: {.compact}
+[9 days]{.accent style="font-size:2.2em; font-weight:700; line-height:1"}\
+5–13 November, 73 commits
+
+[4.1k / 8.0k]{.accent-strong style="font-size:2.2em; font-weight:700; line-height:1"}\
+lines of package / lines of tests
+
+[14k]{.accent-strong style="font-size:2.2em; font-weight:700; line-height:1"}\
+lines of Quarto: theory, validation, logs
+:::
+:::
+::::
+
+::: notes
+70 of the 73 commits are co-authored by Claude. Twice as many lines of tests as of code.
+The site has sections for theory, concepts, ideas, validation, engineering and research
+logs, and excerpts of the development conversations.
+:::
+
+## Validated, milestone by milestone
+
+::: {.compact .wide}
+| Milestone | Physics | Checked against | Result |
+|---|---|---|---|
+| 1a | Empty-lattice bands, fcc | Analytic free-electron bands | Bit-for-bit identical |
+| 1b | Silicon, Cohen–Bergstresser pseudopotential | Published levels (1966) | Within 0.089 eV |
+| 2a | Self-consistent LDA for H₂; forces from autodiff | DFTK, same discrete problem | Within 3 × 10⁻¹¹ a.u. |
+| 2b | Self-consistent LDA silicon, k-points, nonlocal projectors | DFTK, same discrete problem | Within 3 × 10⁻¹¹ a.u. |
+| 2c | Eigensolver for large k-grids and GPUs | The 2b code: same energies | 8³ k-grid on a V100: 40 s → 6.1 s |
+:::
+
+::: {.wide}
+[Every number is computed by a validation document each time the site is built. A document that disagrees with the code fails the build.]{.muted}
+:::
+
+::: notes
+The validation ladder from CLAUDE.md: analytic limits first, then published numbers,
+then reference codes run on the same system.
+The 2b LDA gap is 0.47 eV against 1.17 eV in experiment; that is the known LDA
+underestimate, not an error, which is why the table compares with DFTK instead.
+:::
+
+## The milestones, live
+
+```{=html}
+<iframe class="site-frame" data-src="https://mads-peter.com/jaxdft/#milestones"
+        title="jaxdft milestone ladder" loading="lazy"></iframe>
+```
+
+[Live from [mads-peter.com/jaxdft](https://mads-peter.com/jaxdft/): scroll, hover the charts.]{.muted .compact}
+
+::: notes
+This is the site itself, embedded. Each milestone's chart and number is computed by its
+validation document when the site is built. Scroll down for 2b and 2c.
+If the venue has no network, the slide is blank: fall back to the table on the previous slide.
+:::
+
+## The loop, in the git log
+
+:::: {.columns}
+::: {.column width="62%"}
+::: {.compact}
+| Step | Commit (Milestone 1b, all on 5 November) |
+|---|---|
+| Spec | draft theory post for Cohen–Bergstresser silicon |
+| | theory post: incorporate Cohen–Bergstresser 1966 details |
+| Review | revise theory post after review |
+| | record agreed API; update pseudopotential protocol in CLAUDE.md |
+| Tests | acceptance, property and unit tests (failing, pre-implementation) |
+| Implement | implement Structure, units, Cohen–Bergstresser and LocalPotential |
+| Validate | validation document, matrix-element direction test, logs |
+:::
+:::
+
+::: {.column width="38%"}
+> "Do not write or change acceptance tests to fit an implementation. If a test looks wrong, stop and raise it."
+
+[From the project's `CLAUDE.md`]{.muted .compact}
+:::
+::::
+
+::: notes
+Every milestone has the same sequence of commits. The theory post is reviewed by me,
+and for several milestones also by a second model outside the session.
+The API is agreed through rounds of questions before the acceptance tests are written,
+so the tests can be committed failing.
+:::
+
+## What the tests couldn't catch
+
+:::: {.columns}
+::: {.column width="50%"}
+After milestone 2a, reading the code:
+
+> "The mixing scheme is hardcoded, the class describes the parameters but not the method."
+
+> "Can you check if there are other places where such abstractions are missing? If you find any propose them before changing any code."
+:::
+
+::: {.column width="50%"}
+::: {.compact}
+- `CLAUDE.md` already asked for algorithms behind abstractions. The agent hard-coded the mixing anyway.
+- The fix: a `Mixer` protocol. Results **bitwise identical** before and after.
+- The audit found six more places; three changed now, three left for the milestones that need them.
+- Every test passed throughout. **Tests check behaviour, not architecture.**
+:::
+:::
+::::
+
+::: notes
+The three changes: SCF terms found by role instead of by class name (it required a class
+literally named "Ewald"), the preconditioner as an option, and the initial density as an option.
+Source: the "Missing abstraction" conversation excerpt and the engineering log, 6 November.
+:::
+
+## How it went
+
+[It worked. Review is the cost.]{.accent style="font-size:1.4em; font-weight:700"}
+
+::: {.compact .wide}
+- **Worked:** five milestones of validated physics in nine days, agreeing with a production code to 10⁻¹¹.
+- **The bottleneck was me:** reading theory posts, tests and code at every gate.
+- **Review needs material:** theory posts, failing tests and validation documents are what made the agent's work reviewable.
+:::
+
+[N = 1, my own project, my own judgement.]{.muted}
+
+::: notes
+TODO (Mads-Peter): add your own examples here: roughly how your time split between
+reviewing and other work, and anything you would do differently.
+:::

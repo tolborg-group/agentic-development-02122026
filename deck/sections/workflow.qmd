@@ -1,0 +1,140 @@
+# My workflow
+N = 1, and these are opinions
+
+## The loop, per milestone
+
+::: {.flow}
+::: {.panel .compact}
+**1 · Spec**
+
+What does this milestone build? Theory and working equations.
+Where is domain knowledge essential? Which invariants and limits can we test?
+
+[Human writes / approves]{.accent-strong}
+:::
+
+::: {.panel .compact}
+**2 · Tests first**
+
+Tests implemented before any code.
+Check they fail, then review them.
+
+[Human gate: review tests]{.accent-strong}
+:::
+
+::: {.panel .compact}
+**3 · Implement**
+
+The agent implements against the tests and the spec.
+:::
+
+::: {.panel .compact}
+**4 · Validate & review**
+
+A Quarto validation document runs the code on a real example
+as an integration test. Then code review.
+
+[Human gate: review results and code]{.accent-strong}
+:::
+:::
+
+::: {.wide}
+[Nguyen: set up, then step in when stuck. Here: a human gate on every milestone.]{.muted}
+:::
+
+::: notes
+The spec step is where I decide where the domain knowledge sits: exactly the
+places the cases showed agents fail (the Bloch phase sign, electron count, alpha).
+Reviewing the tests before implementation matters because if the agent writes both
+tests and code, they can quietly fit each other, which is the alpha = 0.27 pattern.
+:::
+
+## Quarto as shared context
+
+:::: {.columns}
+::: {.column width="50%"}
+::: {.panel .compact}
+**Nguyen's CHANGELOG**
+
+- Memory for the **agent** across sessions
+- Stops it repeating dead ends
+- Didn't stop 33 sessions in the wrong architecture
+:::
+:::
+
+::: {.column width="50%"}
+::: {.panel .compact}
+**The jaxdft Quarto site**
+
+- Memory across sessions, readable by **humans** too
+- Holds the spec: theory, equations, invariants
+- Holds the validation documents, so it is **where review happens**
+:::
+:::
+::::
+
+::: notes
+TODO: add a screenshot from the jaxdft site once its CI render finishes.
+The CHANGELOG is a log the agent writes for its future self. The Quarto site is a
+research notebook that the agent and I both write and both read; validating the
+code and reviewing it happen in the same place.
+:::
+
+## Reviewability is the product
+
+The hard part is getting code from the agent that you can **review**.
+
+My criterion: reviewing it should be **faster than writing it yourself**.
+
+::: {.panel .compact .wide}
+O'Brien et al. (2025), survey of 868 scientists who program: the strongest single predictor
+of *feeling* productive with AI tools was **how many lines of generated code people accept at once**.
+Small in absolute terms (~10% of variance), but larger than any other factor.
+
+[Their reading: scientists may gauge productivity by code generation rather than validation.]{.muted}
+:::
+
+::: notes
+METR's randomized trial points the same way: experienced developers estimated AI made
+them 20% faster, but it made them 19% slower (early-2025 tools, large mature codebases).
+Feeling productive and being productive can come apart.
+What makes code reviewable for me: small milestones, tests reviewed before code,
+a validation document showing the code on a real problem, and the tooling on the next slide.
+:::
+
+## Project scaffolding
+
+::: {.compact .wide}
+| Tier | Tools | Signal |
+|---|---|---|
+| **Must have** | git | What changed, and a way back |
+| | pixi or uv | Same environment for agent, you and CI |
+| | pytest | Does the code do what the tests say? |
+| **Too cheap to skip** | ruff, mypy | Style and common bugs; types and interfaces |
+| **High value for scientific code** | Quarto, hypothesis | Readable results on real examples; invariants over many inputs |
+| **When you need more confidence** | jaxtyping, mutmut | Array shapes and dtypes; can the tests actually fail? |
+:::
+
+::: {.wide}
+[Each tool is a signal to **both** the agent and the human. They only help if they run on every change: `CLAUDE.md`, hooks, pre-commit, CI.]{.muted}
+:::
+
+::: notes
+hypothesis is the natural way to encode the invariants from the spec: electron count,
+Hermiticity, symmetries, limits. Those are exactly the checks AInsteinBench says the
+agent lacked.
+mutmut answers the "tests too loose" failure: if mutating the code doesn't break a test,
+the test isn't checking much.
+:::
+
+## How this maps to the evidence
+
+::: {.compact .wide}
+| Practice | Supported by | Complicated by / open |
+|---|---|---|
+| Spec names invariants, limits, where domain knowledge matters | Failures sit exactly there (AInsteinBench C.8, C.9; Nguyen's α) | — |
+| Tests first, reviewed | Oracle tests drove 10 of 15 fixes (Nguyen) | Tests can be too loose or too strict (AInsteinBench §5.2): hence the review |
+| Validation on a real example | Single-point tests hid α (Nguyen) | One example is still one point |
+| Small milestones with human gates | 33 stuck sessions (Nguyen); success comes early (AInsteinBench §4.3) | No study compares gated and hands-off workflows |
+| Reviewability as the goal | Perceived productivity tracks lines accepted (O'Brien) | How to measure reviewability is open |
+:::
