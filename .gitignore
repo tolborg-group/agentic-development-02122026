@@ -5,3 +5,6 @@
 # quarto
 deck/_output/
 deck/.quarto/
+
+# References / content that is access restricted / copy right 
+references/
