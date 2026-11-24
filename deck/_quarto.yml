@@ -11,3 +11,4 @@ format:
     slide-level: 2
     navigation-mode: vertical
     progress: false
+    css: custom.css

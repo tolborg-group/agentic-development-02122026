@@ -1,0 +1,5 @@
+/* Deck-local tweaks on top of quarto-kit. */
+
+/* Lift the theme's 52ch line cap for dense, full-width slides. */
+.reveal .wide p,
+.reveal .wide li { max-width: none; }

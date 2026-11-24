@@ -1,0 +1,126 @@
+# Case 2: AInsteinBench — agents in PySCF
+Benchmarking Coding Agents on Scientific Repositories
+
+## The benchmark
+
+:::: {.columns}
+::: {.column width="64%"}
+**244 tasks** from merged, maintainer-authored pull requests in six scientific
+codebases: PySCF, Qiskit, RDKit, OpenMM, AMReX, Einstein Toolkit.
+
+An agent gets the issue and the repository in a container, then reads, edits
+and runs code **on its own**. A task is solved if the PR's own tests go from failing to passing.
+
+Domain experts reviewed every task and rated its difficulty.
+
+[Duston et al. (2025), [arXiv:2512.21373](https://arxiv.org/abs/2512.21373) ·
+No human in the loop · Models from late 2025]{.muted .compact}
+:::
+
+::: {.column width="36%"}
+::: {.compact}
+[44%]{.accent style="font-size:2.2em; font-weight:700; line-height:1"}\
+solved by the best model (Claude 4.5 Opus)
+
+[38%]{.accent-strong style="font-size:2.2em; font-weight:700; line-height:1"}\
+on quantum chemistry (PySCF)
+
+[30%]{.accent-strong style="font-size:2.2em; font-weight:700; line-height:1"}\
+on tasks rated hard
+:::
+:::
+::::
+
+::: notes
+Tasks are real bugs and features that PySCF etc. maintainers fixed, with the
+maintainer's tests as the judge. The agent is the CodeAct framework in a Docker
+container; it never talks to a human.
+Models evaluated include Claude 4.5 Opus and Sonnet, GPT-5.1, GPT-5-high and Gemini 3 Pro.
+These are a generation behind current models, so the absolute numbers are dated;
+the failure modes are what is interesting.
+Localization (finding the right files) is largely solved for top models (above 0.70);
+the bottleneck is the reasoning about the science.
+:::
+
+## Four PySCF cases
+
+::: {.compact}
+| Case | Task | What the agent did | Outcome |
+|---|---|---|---|
+| **C.4** FCI | Add spin-separated 1–4 RDM APIs, given only function signatures | The paper's solution reuses existing helpers and the `make_rdm123s` pattern | Shown as a case where a small spec suffices in a coherent codebase |
+| **C.6** ROHF | DIIS fails to converge for triplet O | Physically correct fix: energy matches to 9 decimals, but needs ~16 SCF cycles | [Rejected]{.accent-strong}: the test caps it at 9 (*false negative*) |
+| **C.8** k-point CCSD | Diamond with k-point symmetry doesn't converge | Sorted orbital energies in the CCSD module | [Failed]{.accent-strong}: the bug was one sign in the Bloch phase, in the symmetry code |
+| **C.9** RHF smearing | Odd-electron systems end up with the wrong electron count | Kept integer rounding of N/2 | [Failed]{.accent-strong}: 15 electrons become 16 |
+:::
+
+::: notes
+C.4: the paper describes the implementation approach but does not state clearly whether
+the code shown is the agent's or the reference solution, so I present it as the paper does:
+an example of how much the codebase's own conventions carry.
+C.6 is the reverse of the usual worry: the test was too strict, not too loose.
+The fix for the benchmark was simply to drop the 9-iteration requirement.
+:::
+
+## Plausible, small, wrong
+
+:::: {.columns}
+::: {.column width="50%"}
+**C.9 RHF smearing, N = 15**
+
+```python
+# agent
+nocc = (nelectron + 1) // 2   # 8 → 16 electrons
+# maintainer fix
+nocc = nelectron / 2          # 7.5 → 15 electrons
+```
+
+SCF still converges, and most tests use even-electron molecules.
+:::
+
+::: {.column width="50%"}
+**C.8 k-point CCSD**
+
+```python
+# maintainer fix, pyscf/pbc/symm/symmetry.py
+- np.exp(-1j * np.dot(kpt_scaled, Lshift) * 2*np.pi)
++ np.exp( 1j * np.dot(kpt_scaled, Lshift) * 2*np.pi)
+```
+
+The agent instead sorted orbital energies in the CCSD module.
+Missed red flag: a **positive MP2 energy** for an insulator.
+:::
+::::
+
+> Implementations that are "locally plausible and numerically stable, but scientifically invalid." [Duston et al. (2025), §5.1]{.muted}
+
+::: notes
+Same pattern as Nguyen's α = 0.27. And outside PySCF, the RDKit case C.5: the agent
+loosened two global geometry thresholds so failing molecules embedded, and the tests
+passed, but molecules with impossible tetrahedral centres now embed too.
+For C.8: sorting orbitals at each k-point cannot fix an inconsistent phase between
+symmetry-related k-points; in degenerate manifolds it may even hide the real defect.
+:::
+
+## What we can learn [(our reading)]{.muted}
+
+::: {.compact .wide}
+1. **Tests are imperfect oracles, in both directions.** Too loose (RDKit C.5), too strict (C.6), per §5.2.
+   Read the diff and what the test asserts, not just pass or fail.
+2. **Know your invariants and red flags.** Electron count, the sign of the MP2 energy, Hermiticity.
+   The paper names these as the domain knowledge needed (C.8, C.9). Turn them into asserts and tests, or tell the agent.
+3. **Symptom ≠ root cause.** The agent patched where the error appeared (CCSD), not where it came from (symmetry code).
+   Ask for the cause before accepting a fix.
+4. **Success comes early.** Solved runs level off within 20–60 steps; longer runs mostly pile up failures (§4.3).
+   Step in or restart, the same lesson as Nguyen's escalation rule.
+5. **Coherent codebases help** (C.4). Conventions, naming and helpers are part of the setup we give the agent.
+:::
+
+::: {.wide}
+[The failures fall exactly where domain expertise sits. Supervising an agent is a skill we have to learn.]{.accent}
+:::
+
+::: notes
+These lessons are my reading of the benchmark's case studies, not recommendations the
+authors make. The paper itself only concludes that tests are imperfect oracles and that
+failures are about scientific invariants rather than finding the right files.
+:::

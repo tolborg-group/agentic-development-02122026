@@ -10,7 +10,9 @@ date: 2026-12-02
 
 {{< include cases/nguyen.qmd >}}
 
-# Case 2: `jaxdft` 
+{{< include cases/ainsteinbench.qmd >}}
+
+# Case 3: `jaxdft` 
 
 I tried to build something substantial with `claude code`, my idea was a `jax`-based DFT code 
 with the explicit purpose of being able to run on GPU. 
