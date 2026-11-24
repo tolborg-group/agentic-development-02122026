@@ -1,0 +1,19 @@
+---
+title: "Agentic Development"
+author: "Mads-Peter Verner Christiansen"
+date: 2026-12-02
+---
+
+# Introduction
+
+- Using *"agentic development"* for scientific software projects. 
+
+# Example 1: `jaxdft` 
+
+I tried to build something substantial with `claude code`, my idea was a `jax`-based DFT code 
+with the explicit purpose of being able to run on GPU. 
+
+
+# Discussion {.closing-slide}
+
+Questions?

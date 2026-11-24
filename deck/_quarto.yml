@@ -1,0 +1,11 @@
+project:
+  type: default
+  output-dir: _output
+
+chapter-progress: true
+
+format:
+  quarto-kit-revealjs:
+    slide-level: 2
+    navigation-mode: vertical
+    progress: false

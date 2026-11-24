@@ -1,0 +1,12 @@
+[workspace]
+authors = ["Mads-Peter Verner Christiansen <mpvc@bio.aau.dk>"]
+channels = ["conda-forge"]
+name = "agentic-development-02122026"
+platforms = ["osx-arm64"]
+version = "0.1.0"
+
+[tasks]
+preview = { cmd = "quarto preview", cwd = "deck" }
+render = { cmd = "quarto render", cwd = "deck" }
+
+[dependencies]
