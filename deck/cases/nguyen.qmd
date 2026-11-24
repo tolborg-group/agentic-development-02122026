@@ -1,0 +1,126 @@
+# Case 1: Physics Is All You Need?
+A Case Study in Physicist-Supervised AI Development of Scientific Software
+
+## The case: CLAX-PT
+
+:::: {.columns}
+::: {.column width="52%"}
+One physicist supervising **Claude Code** (Sonnet & Opus) for
+**12 working days** over **57 sessions**.
+
+Built **CLAX-PT**: a differentiable one-loop perturbation-theory module in JAX
+(~2,100 lines). It predicts how galaxies cluster, and small errors bias the
+cosmological parameters inferred from surveys.
+
+Target: agree to **≲ 1%** with the established C code **CLASS-PT**.
+
+[Nguyen (2026), arXiv:2605.30353]{.muted}
+:::
+
+::: {.column width="48%"}
+::: {.panel .compact}
+**Supervision protocol**
+
+- **Oracle:** every function tested against CLASS-PT output, tests written *before* code
+- **CHANGELOG** as shared memory across sessions
+- **Terse tests** (`--fast`) to keep the context window clean
+- **Parallel sessions** in git worktrees for competing hypotheses
+- Rules: **no fudge factors**; **test at many parameter points**
+:::
+:::
+::::
+
+::: notes
+The supervision setup was adapted from Anthropic's C-compiler project (Carlini 2026).
+CLAX-PT validates nine output spectra; errors relative to CLASS-PT are 0.3–1.4% max.
+For non-cosmologists: it is a "next-to-leading-order" correction to the linear
+prediction, comparable to a loop correction in quantum field theory.
+:::
+
+## What happened
+
+::::: {.columns}
+:::: {.column width="76%"}
+![](figures/nguyen-2026-fig2.png){width="100%" fig-alt="Maximum relative error versus cumulative agent session. The real-space spectrum converges within about 10 sessions, while the worst redshift-space multipole stays at 8 to 86 percent error for about 33 sessions until human interventions bring it to the 1 percent level."}
+::::
+
+:::: {.column width="24%"}
+::: {.compact}
+[10/15]{.accent style="font-size:2.2em; font-weight:700; line-height:1"}\
+issues fixed by the agent alone
+
+[3/15]{.accent-strong style="font-size:2.2em; font-weight:700; line-height:1"}\
+needed human physics judgment
+
+[33/57]{.accent-strong style="font-size:2.2em; font-weight:700; line-height:1"}\
+sessions spent stuck on those three
+
+[Figure: Nguyen (2026), Fig. 2]{.muted}
+:::
+::::
+:::::
+
+::: notes
+The six redshift-space multipoles were off by 8–86%. Each fix improved one and degraded another.
+The architecture assumed isotropic BAO damping, but in redshift space it is anisotropic,
+which no fixed set of kernel coefficients can represent.
+A generic "reconsider the architecture" prompt did not help: the agent reaffirmed its design.
+What worked was the physicist naming the physics concept (anisotropic BAO damping) and proposing
+a Gauss–Legendre redesign. The agent then implemented it in a single session.
+:::
+
+## The fudge factor
+
+:::: {.columns}
+::: {.column width="55%"}
+After the redesign, two spectra were still off by 1–2%.
+
+The agent grid-searched a correction **α = 0.27**. It passed **every oracle test**
+and was **committed**, even though "no fudge factors" was a written rule.
+
+α appears nowhere in the theory. It was calibrated to the one test cosmology
+and would be wrong at any other.
+
+The real fix was **3 lines** of code, with **zero tuned parameters**.
+:::
+
+::: {.column width="45%"}
+> "What does α correspond to in the perturbation theory derivation, or did you just copy it from the CLASS-PT source?"
+
+[The physicist's question. The agent confirmed neither.]{.muted}
+
+A limiting-case probe (set α = 0) showed the patch was hiding a structural defect.
+
+[Oracle tests verify **what**, not **why**.]{.accent}
+:::
+::::
+
+::: notes
+The agent framed α as a free parameter inside an existing formula, so it followed the
+letter of the rule but missed its point. The fix moved the tree-level calculation inside
+the existing quadrature loop with the correct anisotropic damping.
+:::
+
+## Advice from the paper
+
+::: {.compact}
+1. **Oracle tests verify what, not why.**
+   Test at parameter points beyond the calibration point. Make limiting-case probes
+   an automatic check before every commit.
+2. **Shared memory prevents repeats, not architectural loops.**
+   Escalate to a human after ~5–10 sessions with no steady improvement. That would have
+   caught this at session 30 instead of 56.
+3. **The human role is architectural and physical judgment.**
+   Run a "physics audit": does every tuned parameter correspond to a physical quantity?
+   Ship the supervision log with the code, like a lab notebook.
+:::
+
+[Caveats: N = 1, one domain, self-reported, and the supervisor intervened only when the agent was stuck.
+Full supervision log: [github.com/MinhMPA/clax-pt](https://github.com/MinhMPA/clax-pt)]{.muted .compact}
+
+::: notes
+The author's term for what the agent lacked is "explanatory agency": generating
+questions about whether the current solution frame is correct.
+They compare supervising the agent to advising a graduate student, except the
+student would eventually feel uneasy about an unphysical parameter.
+:::

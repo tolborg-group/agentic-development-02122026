@@ -8,11 +8,12 @@ date: 2026-12-02
 
 - Using *"agentic development"* for scientific software projects. 
 
-# Example 1: `jaxdft` 
+{{< include cases/nguyen.qmd >}}
+
+# Case 2: `jaxdft` 
 
 I tried to build something substantial with `claude code`, my idea was a `jax`-based DFT code 
 with the explicit purpose of being able to run on GPU. 
-
 
 # Discussion {.closing-slide}
 
