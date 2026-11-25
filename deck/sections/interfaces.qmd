@@ -106,6 +106,62 @@ Desktop can also start cloud sessions that keep running after you close the app.
 Sources: code.claude.com/docs/en/desktop, code.claude.com/docs/en/headless (checked 2026-11-24).
 :::
 
+## Permissions: what it may do without asking
+
+:::: {.columns}
+::: {.column width="48%" .compact}
+[It runs in *your* environment, so it asks first]{.accent-strong}
+
+**No prompt:** reading project files; read-only commands (`ls`, `grep`, `git status`).
+
+**Asks:** editing files, other commands, web pages.
+
+- *Yes*: this once
+- *Yes, and don't ask again for* `pixi run *`: saved for this repo
+- *No*: press **Tab** first to tell it what to do instead
+- **Esc** declines too
+
+**Shift+Tab** switches mode (shown under the prompt box).
+:::
+
+::: {.column width="52%" .compact}
+| Mode | Asks before |
+|---|---|
+| **Manual** | Edits and commands |
+| **Accept edits** | Commands only |
+| **Plan** | Nothing: it can't edit yet |
+| **Auto** | Nothing: a classifier checks each action, [no guarantee]{.muted} |
+
+[`.claude/settings.json`, committed and shared:]{.muted}
+
+```json
+{
+  "permissions": {
+    "allow": ["Bash(pixi run *)"],
+    "deny": ["Bash(git push --force *)",
+             "Read(./.env)"]
+  }
+}
+```
+
+[Rules are enforced, unlike `CLAUDE.md`. Deny beats allow.]{.muted}
+:::
+::::
+
+::: notes
+--dangerously-skip-permissions turns all of this off: only ever inside a container or VM.
+Recent versions start new sessions in auto mode, so people may never see a prompt.
+For a first session I'd switch to Manual (Shift+Tab) to watch what it actually does,
+then allow-list the routine commands (pixi run *). To make Manual the default for a project:
+"defaultMode": "default" under permissions in .claude/settings.json.
+"Don't ask again" for a command is saved to .claude/settings.local.json (personal, not committed);
+file-edit approvals only last for the session.
+/permissions shows and edits all the rules. Order: deny, then ask, then allow.
+The template already denies force-push and git reset --hard.
+/sandbox restricts shell commands to the project directory and an allow-listed network.
+Source: code.claude.com/docs/en/permission-modes, /permissions, /settings, /sandboxing (checked 2026-11-25).
+:::
+
 ## What goes in `CLAUDE.md`
 
 :::: {.columns}
@@ -290,7 +346,7 @@ a clean context, and a written definition of done.
 
 The same file is what you check the result against.
 
-[Source: Claude Code best practices, *Brainstorm with Claude first*]{.muted}
+[[Source: Claude Code best practices, *Brainstorm with Claude first*](https://code.claude.com/docs/en/best-practices#brainstorm-with-claude-first)]{.muted}
 :::
 
 ::: {.column width="55%"}
@@ -328,6 +384,63 @@ spec short enough to review, with the domain decisions made by me, not guessed.
 Writing it into the Quarto site means it is also the shared context from "My workflow".
 The same prompt works for an implementation plan: "interview me until you could write the plan".
 Source: code.claude.com/docs/en/best-practices#brainstorm-with-claude-first (checked 2026-11-25).
+:::
+
+## Cheat sheet
+
+:::: {.columns}
+::: {.column width="33%" .compact}
+**Steer**
+
+| | |
+|---|---|
+| **Esc** | Stop it mid-task |
+| **Esc Esc** | Rewind to an earlier point |
+| `/rewind` | Same: code, conversation or both |
+| **Shift+Tab** | Switch permission mode |
+| `/plan` | Plan mode for one task |
+| `/btw` | Side question, kept out of the context |
+:::
+
+::: {.column width="33%" .compact}
+**Sessions & context**
+
+| | |
+|---|---|
+| `/clear` | Fresh start, new task |
+| `/compact` | Summarise to free context |
+| `/context` | How full is the context? |
+| `/resume` | Pick up an old session |
+| `claude -c` | Continue the last one |
+| `/diff` | What has it changed? |
+:::
+
+::: {.column width="33%" .compact}
+**Input & setup**
+
+| | |
+|---|---|
+| `@file` | Point it at a file |
+| `!cmd` | Run a shell command yourself |
+| **Ctrl+V** | Paste an image (a plot) |
+| `/init` | Draft a `CLAUDE.md` |
+| `/memory` | Edit `CLAUDE.md` |
+| `/model`, `/usage` | Model; limits used |
+| `/permissions` | Allow and deny rules |
+| `/help` | Everything else |
+:::
+::::
+
+::: {.wide}
+[One task per session: `/clear` between tasks. Rewind only tracks Claude's own file edits, so commit often: git is the real undo.]{.muted}
+:::
+
+::: notes
+Long sessions get worse as the context fills with old attempts; /clear is cheap.
+/rewind does not undo changes made by shell commands, or edits you made yourself.
+/doctor checks the installation if something seems broken.
+Ctrl+G opens the prompt in your editor, useful for long prompts. Ctrl+R searches prompt history.
+Source: code.claude.com/docs/en/commands, /interactive-mode, /checkpointing (checked 2026-11-25).
 :::
 
 ## Getting started
