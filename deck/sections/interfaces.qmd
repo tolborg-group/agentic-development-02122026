@@ -168,6 +168,168 @@ advance tend to be generic. Keep it short: the longer it gets, the less weight e
 The "Never" and "Stop and ask" sections are Nguyen's fudge factor and 33 stuck sessions, written as rules.
 :::
 
+## Plan mode: agree before it edits
+
+:::: {.columns}
+::: {.column width="50%" .compact}
+[Try this today]{.accent-strong}
+
+In plan mode the agent reads the code, explores, and writes a **plan**,
+but **does not edit** your files until you approve.
+
+**Alignment:** you see *its* understanding of the task before any code exists.
+Misreadings of the physics are cheap to fix in a plan, expensive in a diff.
+
+**Reviewability:** you review the approach first, so the diff that follows
+is the one you expected.
+
+**Not happy?** Choose *keep planning* and say what's wrong.
+Iterate on the plan, not the code.
+
+[In my experience: far better results on anything non-trivial.]{.muted}
+:::
+
+::: {.column width="50%"}
+::: {.panel .compact}
+**Getting in**
+
+- Terminal: **Shift+Tab** cycles modes until `⏸ plan mode on`
+- Or one prompt: `/plan add smearing to the SCF loop`
+- Desktop (Code mode): mode selector under the prompt box (**Cmd+Shift+M**)
+- VS Code: mode indicator at the bottom of the prompt box
+:::
+
+::: {.panel .compact}
+**When the plan is ready**
+
+- *Yes, auto-accept edits*: go
+- *Yes, manually approve edits*: review each one
+- *No, keep planning*: give feedback
+- **Ctrl+G**: edit the plan yourself first
+:::
+:::
+::::
+
+::: notes
+This is step 1 of my loop ("Spec") made concrete: the plan is where I check that the agent
+put the domain knowledge where it belongs, before any tests or code exist.
+Rule of thumb: use it whenever the task is more than a one-line fix, or whenever you
+couldn't describe the diff you expect in a sentence.
+Approval option names vary a little with version and settings (e.g. "Yes, and use auto mode"
+when auto mode is available). Desktop calls the default mode "Manual".
+Start every session in plan mode: claude --permission-mode plan.
+Source: code.claude.com/docs/en/permission-modes, /desktop, /vs-code (checked 2026-11-25).
+:::
+
+## Plan mode asks before it guesses
+
+:::: {.columns}
+::: {.column width="40%" .compact}
+[`/plan add smearing to the SCF loop`]{.muted}
+
+While planning, the agent stops to ask about the choices that are **yours to make**:
+typically 3–4 options, each with its trade-off, and one marked *Recommended*.
+
+**Domain knowledge goes in here,** at the point where the agent would otherwise pick silently.
+
+**A wrong recommendation is a signal:** the agent is missing context.
+Answer, then add it to `CLAUDE.md` or the spec.
+
+**None fit?** Type your own answer.
+:::
+
+::: {.column width="60%"}
+```text
+ ←  ☐ Scheme  ☐ Width  ✔ Submit  →
+
+Which smearing scheme should set the occupations?
+
+❯ 1. Fermi-Dirac (Recommended)
+     Width is a physical electronic temperature;
+     the free energy has a clear meaning.
+  2. Gaussian
+     Simple and widely used; the width is not a
+     temperature, so extrapolate to zero width.
+  3. Marzari-Vanderbilt (cold)
+     Small error in the energy for metals, and
+     occupations stay between 0 and 1.
+  4. Methfessel-Paxton
+     Accurate for metals, but occupations can go
+     negative; a poor fit for gapped systems.
+  5. Type something.
+```
+
+[Illustrative: a made-up scenario, laid out like the terminal prompt.]{.muted .compact}
+:::
+::::
+
+::: notes
+The recommendation is a reasonable default for a molecular or general-purpose code, but
+for metallic disordered systems you might well want cold smearing: exactly the kind of
+choice that depends on what the code is for, which the agent can only guess.
+The tabs at the top show it can batch several questions (here: scheme, then width and its units)
+before it writes the plan.
+If you never get questions, your prompt or spec may be doing the job already, or the
+agent is making these choices silently: read the plan for them.
+:::
+
+## Drafting a spec: let it interview you
+
+:::: {.columns}
+::: {.column width="45%" .compact}
+[When you don't know exactly what you want yet]{.accent-strong}
+
+You don't have to work it all out before you prompt.
+Ask the agent to **interview you**.
+
+It asks multiple-choice questions about what you haven't pinned down,
+and **keeps asking until the answers add up to a spec.**
+
+Then **start a fresh session** to build from it:
+a clean context, and a written definition of done.
+
+The same file is what you check the result against.
+
+[Source: Claude Code best practices, *Brainstorm with Claude first*]{.muted}
+:::
+
+::: {.column width="55%"}
+::: {.panel .compact}
+**1 · Interview**
+
+```text
+I want to add the stress tensor to our DFT code
+but haven't thought it through yet. Interview me
+until you could write the spec, then write it to
+docs/spec/stress.qmd.
+```
+:::
+
+::: {.panel .compact}
+**2 · Review the spec**
+
+Short enough to read properly. Edit it: the decisions in it are yours.
+:::
+
+::: {.panel .compact}
+**3 · Fresh session**
+
+```text
+/plan Implement docs/spec/stress.qmd
+```
+:::
+:::
+::::
+
+::: notes
+This is how I do the Spec step of my loop. The agent asks about the theory, the working
+equations, units, which invariants and limits we can test; I answer. What comes out is a
+spec short enough to review, with the domain decisions made by me, not guessed.
+Writing it into the Quarto site means it is also the shared context from "My workflow".
+The same prompt works for an implementation plan: "interview me until you could write the plan".
+Source: code.claude.com/docs/en/best-practices#brainstorm-with-claude-first (checked 2026-11-25).
+:::
+
 ## Getting started
 
 ::: {.panel .compact .wide}
@@ -180,7 +342,8 @@ A starting `CLAUDE.md`, and pytest, ruff and mypy already configured with pixi.
 1. Start from the template, and use **Claude Code** (terminal, IDE, or Desktop app **Code** mode)
 2. Fill in `CLAUDE.md`: the project, what done means, your conventions
 3. Pick a small first milestone, and decide where you check the agent's work
-4. Add to `CLAUDE.md` when the agent gets something wrong
+4. Start it in **plan mode**: agree on the plan before any code is written
+5. Add to `CLAUDE.md` when the agent gets something wrong
 
 [My loop is one way to do step 3, not the way. Try your own.]{.muted}
 :::
